@@ -14,6 +14,11 @@ type Config struct {
 
 	Shops []string `yaml:"shops"`
 
+	Server struct {
+		Host string `yaml:"host"`
+		Port int    `yaml:"port"`
+	} `yaml:"server"`
+
 	Cron struct {
 		MachineTypesInterval   int `yaml:"machine_types_interval"`
 		MachinesInterval       int `yaml:"machines_interval"`

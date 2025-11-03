@@ -78,6 +78,16 @@ func UpsertMachines(machines []Machine) error {
 	}).Create(&machines).Error
 }
 
+func InsertMachinesIfNotExists(machines []Machine) error {
+	if len(machines) == 0 {
+		return nil
+	}
+	return db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoNothing: true,
+	}).Create(&machines).Error
+}
+
 // GetMachinesByStatus 根据状态获取机器列表
 func GetMachinesByStatus(status int) ([]Machine, error) {
 	var machines []Machine

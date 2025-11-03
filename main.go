@@ -7,6 +7,7 @@ import (
 	"washwise/config"
 	"washwise/cron"
 	"washwise/model"
+	"washwise/server"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -37,6 +38,17 @@ func main() {
 	taskManager := cron.InitTaskManager()
 	taskManager.Start()
 
+	// 初始化并启动HTTP服务器
+	log.Info("初始化 HTTP 服务器...")
+	srv := server.New(cfg)
+
+	// 在goroutine中启动服务器
+	go func() {
+		if err := srv.Start(); err != nil {
+			log.WithError(err).Fatal("HTTP 服务器启动失败")
+		}
+	}()
+
 	// 等待终止信号
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -47,5 +59,8 @@ func main() {
 	// 优雅关闭
 	log.Info("收到终止信号，正在关闭...")
 	taskManager.Stop()
+	if err := srv.Stop(); err != nil {
+		log.WithError(err).Error("关闭 HTTP 服务器失败")
+	}
 	log.Info("服务已关闭")
 }

@@ -1,15 +1,15 @@
 package model
 
 const (
-	MachineStatusAvailable = 0
-	MachineStatusOffline   = 1
-	MachineStatusInUse     = 2
+	MachineCodeAvailable = 0
+	MachineCodeOffline   = 1
+	MachineCodeInUse     = 2
 )
 
 type Machine struct {
 	Id          int64 `gorm:"primaryKey"`
 	Name        string
-	Status      int
+	Code        int
 	LastUseTime int64
 	Msg         string
 	ShopId      string `gorm:"index"`

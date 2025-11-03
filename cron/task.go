@@ -46,29 +46,31 @@ func GetTaskManager() *TaskManager {
 
 // Start 启动所有定时任务
 func (tm *TaskManager) Start() {
-	cfg := config.Get()
+	go func() {
+		cfg := config.Get()
 
-	// 立即执行一次初始化
-	log.Info("开始初始化数据...")
-	tm.fetchMachineTypes()
-	tm.fetchMachines()
-	tm.fetchMachineDetails()
-	log.Info("数据初始化完成")
+		// 立即执行一次初始化
+		log.Info("开始初始化数据...")
+		tm.fetchMachineTypes()
+		tm.fetchMachines()
+		tm.fetchMachineDetails()
+		log.Info("数据初始化完成")
 
-	// 启动定时任务
-	tm.typeTicker = time.NewTicker(config.GetMachineTypesInterval())
-	tm.machineTicker = time.NewTicker(config.GetMachinesInterval())
-	tm.detailTicker = time.NewTicker(config.GetMachineDetailsInterval())
+		// 启动定时任务
+		tm.typeTicker = time.NewTicker(config.GetMachineTypesInterval())
+		tm.machineTicker = time.NewTicker(config.GetMachinesInterval())
+		tm.detailTicker = time.NewTicker(config.GetMachineDetailsInterval())
 
-	go tm.runMachineTypesTask()
-	go tm.runMachinesTask()
-	go tm.runMachineDetailsTask()
+		go tm.runMachineTypesTask()
+		go tm.runMachinesTask()
+		go tm.runMachineDetailsTask()
 
-	log.WithFields(log.Fields{
-		"machine_types_interval":   cfg.Cron.MachineTypesInterval,
-		"machines_interval":        cfg.Cron.MachinesInterval,
-		"machine_details_interval": cfg.Cron.MachineDetailsInterval,
-	}).Info("定时任务已启动")
+		log.WithFields(log.Fields{
+			"machine_types_interval":   cfg.Cron.MachineTypesInterval,
+			"machines_interval":        cfg.Cron.MachinesInterval,
+			"machine_details_interval": cfg.Cron.MachineDetailsInterval,
+		}).Info("定时任务已启动")
+	}()
 }
 
 // Stop 停止所有定时任务
@@ -172,11 +174,11 @@ func (tm *TaskManager) fetchMachines() {
 					"shopId":        shopId,
 					"machineTypeId": machineType.MachineTypeId,
 				}).Error("获取机器列表失败")
-				break
+				continue
 			}
 
 			if len(resp.Items) == 0 {
-				break
+				continue
 			}
 
 			// 将机器数据持久化到数据库
@@ -186,16 +188,20 @@ func (tm *TaskManager) fetchMachines() {
 				machines = append(machines, model.Machine{
 					Id:     id,
 					Name:   item.Name,
-					Status: model.MachineStatusOffline,
+					Code:   model.MachineCodeOffline,
 					ShopId: shopId,
 				})
 			}
-
-			if err := model.UpsertMachines(machines); err != nil {
-				log.WithError(err).Error("保存机器数据失败")
-			} else {
-				totalCount += len(machines)
-			}
+			totalCount += len(machines)
+			go func() {
+				err := model.InsertMachinesIfNotExists(machines)
+				if err != nil {
+					log.WithError(err).WithFields(log.Fields{
+						"shopId":        shopId,
+						"machineTypeId": machineType.MachineTypeId,
+					}).Error("持久化机器列表失败")
+				}
+			}()
 		}
 	}
 
@@ -229,10 +235,10 @@ func (tm *TaskManager) fetchMachineDetails() {
 			machine.Msg = *detail.DeviceErrorMsg
 		}
 		// 仅当机器状态从可用变为使用中时，更新最后使用时间
-		if machine.Status == model.MachineStatusAvailable && detail.DeviceErrorCode == model.MachineStatusInUse {
+		if machine.Code == model.MachineCodeAvailable && detail.DeviceErrorCode == model.MachineCodeInUse {
 			machine.LastUseTime = time.Now().Unix()
 		}
-		machine.Status = detail.DeviceErrorCode
+		machine.Code = detail.DeviceErrorCode
 
 		if err := model.UpdateMachine(&machine); err != nil {
 			log.WithError(err).WithField("machineId", machine.Id).Warn("更新机器信息失败")
