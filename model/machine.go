@@ -7,10 +7,10 @@ const (
 )
 
 type Machine struct {
-	Id             int64 `gorm:"primaryKey"`
-	Name           string
-	Status         int
-	LastUpdateTime int64
-	RemainTime     int64
-	ShopId         int64
+	Id          int64 `gorm:"primaryKey"`
+	Name        string
+	Status      int
+	LastUseTime int64
+	Msg         string
+	ShopId      string `gorm:"index"`
 }

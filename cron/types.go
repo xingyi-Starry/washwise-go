@@ -46,7 +46,7 @@ type GetMachineDetailResp struct {
 	RemainTime          int     `json:"remainTime"`
 	MachineId           string  `json:"machineId"`
 	ShopId              string  `json:"shopId"`
-	DeviceErrorCode     *string `json:"deviceErrorCode"`
+	DeviceErrorCode     int     `json:"deviceErrorCode"`
 	DeviceErrorMsg      *string `json:"deviceErrorMsg"`
 	AnnouncementContent *string `json:"announcementContent"`
 }
