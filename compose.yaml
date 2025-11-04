@@ -1,0 +1,17 @@
+services:
+  server:
+    build:
+      context: .
+      target: final
+    ports:
+      - 8000:8000
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml:ro
+      - washwise-data:/app/data
+    environment:
+      # 设置时区
+      - TZ=Asia/Shanghai
+
+volumes:
+  washwise-data:
+    driver: local
