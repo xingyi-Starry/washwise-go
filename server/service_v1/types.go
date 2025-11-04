@@ -11,3 +11,5 @@ type MachineInfo struct {
 type GetLaundryMachinesResp struct {
 	Data map[string]MachineInfo `json:"洗衣机"`
 }
+
+type GetMachineDetailResp map[string]int // date -> usage count

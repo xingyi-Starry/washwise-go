@@ -27,7 +27,7 @@ func InitDB(path string) error {
 	}
 
 	// 自动迁移数据库结构
-	if err := db.AutoMigrate(&Machine{}); err != nil {
+	if err := db.AutoMigrate(&Machine{}, &Usage{}); err != nil {
 		return err
 	}
 

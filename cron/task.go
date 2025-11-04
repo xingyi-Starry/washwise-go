@@ -17,8 +17,10 @@ type TaskManager struct {
 	cancel context.CancelFunc
 
 	// 内存存储
-	machineTypes    map[string]*GetMachineTypesResp // shopId -> types
-	machineTypesMux sync.RWMutex
+	machineTypes     map[string]*GetMachineTypesResp // shopId -> types
+	machineUsages    map[int64]*model.Usage          // machineId(in use) -> usages
+	machineTypesMux  sync.RWMutex
+	machineUsagesMux sync.RWMutex
 
 	// Tickers
 	typeTicker    *time.Ticker
@@ -32,9 +34,10 @@ var tm *TaskManager
 func InitTaskManager() *TaskManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	tm = &TaskManager{
-		ctx:          ctx,
-		cancel:       cancel,
-		machineTypes: make(map[string]*GetMachineTypesResp),
+		ctx:           ctx,
+		cancel:        cancel,
+		machineTypes:  make(map[string]*GetMachineTypesResp),
+		machineUsages: make(map[int64]*model.Usage),
 	}
 	return tm
 }
@@ -234,9 +237,29 @@ func (tm *TaskManager) fetchMachineDetails() {
 		if detail.DeviceErrorMsg != nil {
 			machine.Msg = *detail.DeviceErrorMsg
 		}
-		// 仅当机器状态从可用变为使用中时，更新最后使用时间
+		// 当机器状态从可用变为使用中时，更新最后使用时间，记录使用记录
 		if machine.Code == model.MachineCodeAvailable && detail.DeviceErrorCode == model.MachineCodeInUse {
 			machine.LastUseTime = time.Now().Unix()
+			usage := &model.Usage{
+				MachineId: machine.Id,
+				StartTime: time.Now().Unix(),
+				EndTime:   0,
+			}
+			tm.machineUsagesMux.Lock()
+			tm.machineUsages[machine.Id] = usage
+			tm.machineUsagesMux.Unlock()
+		} else if machine.Code == model.MachineCodeInUse && detail.DeviceErrorCode != model.MachineCodeInUse {
+			// 当机器状态从使用中变为不可用时，记录使用结束时间，记录入库
+			tm.machineUsagesMux.Lock()
+			usage, exists := tm.machineUsages[machine.Id]
+			if exists {
+				usage.EndTime = time.Now().Unix()
+				model.CreateUsage(usage)
+				delete(tm.machineUsages, machine.Id)
+			} else {
+				log.WithField("machineId", machine.Id).Warn("未找到待结束的使用记录")
+			}
+			tm.machineUsagesMux.Unlock()
 		}
 		machine.Code = detail.DeviceErrorCode
 
