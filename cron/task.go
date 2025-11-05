@@ -17,10 +17,8 @@ type TaskManager struct {
 	cancel context.CancelFunc
 
 	// 内存存储
-	machineTypes     map[string]*GetMachineTypesResp // shopId -> types
-	machineUsages    map[int64]*model.Usage          // machineId(in use) -> usages
-	machineTypesMux  sync.RWMutex
-	machineUsagesMux sync.RWMutex
+	machineTypes    map[string]*GetMachineTypesResp // shopId -> types
+	machineTypesMux sync.RWMutex
 
 	// Tickers
 	typeTicker    *time.Ticker
@@ -34,10 +32,9 @@ var tm *TaskManager
 func InitTaskManager() *TaskManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	tm = &TaskManager{
-		ctx:           ctx,
-		cancel:        cancel,
-		machineTypes:  make(map[string]*GetMachineTypesResp),
-		machineUsages: make(map[int64]*model.Usage),
+		ctx:          ctx,
+		cancel:       cancel,
+		machineTypes: make(map[string]*GetMachineTypesResp),
 	}
 	return tm
 }
@@ -231,21 +228,29 @@ func (tm *TaskManager) fetchMachineDetails() {
 			continue
 		}
 
+		// 当机器状态从可用变为使用中时，更新最后使用时间
+		if machine.Code == model.MachineCodeAvailable && detail.DeviceErrorCode == model.MachineCodeInUse {
+			machine.LastUseTime = time.Now().Unix()
+		} else if machine.Code == model.MachineCodeInUse && detail.DeviceErrorCode != model.MachineCodeInUse {
+			// 当机器状态从使用中变为不可用时，记录使用结束时间，记录入库
+			usage := &model.Usage{
+				MachineId: machine.Id,
+				StartTime: machine.LastUseTime,
+				EndTime:   time.Now().Unix(),
+			}
+			model.CreateUsage(usage)
+			// 更新平均使用时间
+			machine.AvgUseTime = calculateAvgUseTime(machine.AvgUseTime, usage.EndTime-usage.StartTime)
+		}
+
 		// 更新机器信息
 		machine.Name = detail.Name
 		machine.ShopId = detail.ShopId
+		machine.Code = detail.DeviceErrorCode
 		machine.Msg = ""
 		if detail.DeviceErrorMsg != nil {
 			machine.Msg = *detail.DeviceErrorMsg
 		}
-		// 当机器状态从可用变为使用中时，更新最后使用时间，记录使用记录
-		if machine.Code == model.MachineCodeAvailable && detail.DeviceErrorCode == model.MachineCodeInUse {
-			tm.beginUse(machine)
-		} else if machine.Code == model.MachineCodeInUse && detail.DeviceErrorCode != model.MachineCodeInUse {
-			// 当机器状态从使用中变为不可用时，记录使用结束时间，记录入库
-			tm.endUse(machine)
-		}
-		machine.Code = detail.DeviceErrorCode
 
 		if err := model.UpdateMachine(machine); err != nil {
 			log.WithError(err).WithField("machineId", machine.Id).Warn("更新机器信息失败")
@@ -262,36 +267,17 @@ func (tm *TaskManager) fetchMachineDetails() {
 	}).Info("获取机器详情完成")
 }
 
-func (tm *TaskManager) beginUse(machine *model.Machine) {
-	machine.LastUseTime = time.Now().Unix()
-	usage := &model.Usage{
-		MachineId: machine.Id,
-		StartTime: time.Now().Unix(),
-		EndTime:   0,
+func calculateAvgUseTime(lastAvg, newUseTime int64) int64 {
+	if newUseTime < 10*60 { // 10分钟以内，可能是桶自洁，不计入
+		return lastAvg
+	} else if newUseTime > 80*60 { //过久可能异常的时间（如服务中断），截断
+		return 80 * 60
 	}
-	tm.machineUsagesMux.Lock()
-	tm.machineUsages[machine.Id] = usage
-	tm.machineUsagesMux.Unlock()
-}
 
-func (tm *TaskManager) endUse(machine *model.Machine) {
-	tm.machineUsagesMux.Lock()
-	usage, exists := tm.machineUsages[machine.Id]
-	if exists {
-		usage.EndTime = time.Now().Unix()
-		model.CreateUsage(usage)
-		// 更新平均使用时间
-		usageDuration := usage.EndTime - usage.StartTime
-		if machine.AvgUseTime == 0 {
-			machine.AvgUseTime = usageDuration
-		} else {
-			machine.AvgUseTime = (machine.AvgUseTime*9 + usageDuration) / 10 // 简单移动平均
-		}
-		delete(tm.machineUsages, machine.Id)
-	} else {
-		log.WithField("machineId", machine.Id).Warn("未找到待结束的使用记录")
+	if lastAvg == 0 { // 第一次计算，直接使用新值
+		return newUseTime
 	}
-	tm.machineUsagesMux.Unlock()
+	return (lastAvg*9 + newUseTime) / 10 // 简单移动平均
 }
 
 // GetMachineTypes 获取指定商店的机器类型（从内存）
