@@ -28,8 +28,12 @@ func GetLaundryMachines(c *fiber.Ctx) error {
 		k := strconv.FormatInt(machine.Id, 10)
 
 		remainTime := 0
+		predictUseTime := machine.AvgUseTime
+		if predictUseTime == 0 {
+			predictUseTime = 45 * 60 // 默认45分钟
+		}
 		if machine.Code == model.MachineCodeInUse {
-			remainTime = int(max(machine.LastUseTime+40*60-time.Now().Unix(), 0))
+			remainTime = int(max(machine.LastUseTime+predictUseTime-time.Now().Unix(), 0))
 		}
 		resp.Data[k] = MachineInfo{
 			Name:       machine.Name,

@@ -19,7 +19,9 @@ type Machine struct {
 	Code        int
 	LastUseTime int64
 	Msg         string
+	AvgUseTime  int64  // 平均使用时间，单位秒
 	ShopId      string `gorm:"index"`
+	Type        string
 }
 
 // CreateMachine 创建新机器
@@ -48,8 +50,8 @@ func GetMachinesByShopID(shopId string) ([]Machine, error) {
 }
 
 // GetAllMachines 获取所有机器
-func GetAllMachines() ([]Machine, error) {
-	var machines []Machine
+func GetAllMachines() ([]*Machine, error) {
+	var machines []*Machine
 	err := db.Find(&machines).Error
 	return machines, err
 }
@@ -78,7 +80,7 @@ func DeleteMachinesByShopID(shopId string) error {
 func UpsertMachine(machine *Machine) error {
 	return db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"name", "status", "last_use_time", "msg", "shop_id"}),
+		DoUpdates: clause.AssignmentColumns([]string{"name", "status", "last_use_time", "msg", "avg_use_time", "shop_id", "type"}),
 	}).Create(machine).Error
 }
 
@@ -89,7 +91,7 @@ func UpsertMachines(machines []Machine) error {
 	}
 	return db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"name", "status", "last_use_time", "msg", "shop_id"}),
+		DoUpdates: clause.AssignmentColumns([]string{"name", "status", "last_use_time", "msg", "avg_use_time", "shop_id", "type"}),
 	}).Create(&machines).Error
 }
 

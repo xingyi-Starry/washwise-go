@@ -193,6 +193,7 @@ func (tm *TaskManager) fetchMachines() {
 					Name:   item.Name,
 					Code:   model.MachineCodeOffline,
 					ShopId: shopId,
+					Type:   machineType.MachineTypeName,
 				})
 			}
 			totalCount += len(machines)
@@ -239,31 +240,14 @@ func (tm *TaskManager) fetchMachineDetails() {
 		}
 		// 当机器状态从可用变为使用中时，更新最后使用时间，记录使用记录
 		if machine.Code == model.MachineCodeAvailable && detail.DeviceErrorCode == model.MachineCodeInUse {
-			machine.LastUseTime = time.Now().Unix()
-			usage := &model.Usage{
-				MachineId: machine.Id,
-				StartTime: time.Now().Unix(),
-				EndTime:   0,
-			}
-			tm.machineUsagesMux.Lock()
-			tm.machineUsages[machine.Id] = usage
-			tm.machineUsagesMux.Unlock()
+			tm.beginUse(machine)
 		} else if machine.Code == model.MachineCodeInUse && detail.DeviceErrorCode != model.MachineCodeInUse {
 			// 当机器状态从使用中变为不可用时，记录使用结束时间，记录入库
-			tm.machineUsagesMux.Lock()
-			usage, exists := tm.machineUsages[machine.Id]
-			if exists {
-				usage.EndTime = time.Now().Unix()
-				model.CreateUsage(usage)
-				delete(tm.machineUsages, machine.Id)
-			} else {
-				log.WithField("machineId", machine.Id).Warn("未找到待结束的使用记录")
-			}
-			tm.machineUsagesMux.Unlock()
+			tm.endUse(machine)
 		}
 		machine.Code = detail.DeviceErrorCode
 
-		if err := model.UpdateMachine(&machine); err != nil {
+		if err := model.UpdateMachine(machine); err != nil {
 			log.WithError(err).WithField("machineId", machine.Id).Warn("更新机器信息失败")
 			continue
 		}
@@ -276,6 +260,38 @@ func (tm *TaskManager) fetchMachineDetails() {
 		"success": successCount,
 		"fail":    len(machines) - successCount,
 	}).Info("获取机器详情完成")
+}
+
+func (tm *TaskManager) beginUse(machine *model.Machine) {
+	machine.LastUseTime = time.Now().Unix()
+	usage := &model.Usage{
+		MachineId: machine.Id,
+		StartTime: time.Now().Unix(),
+		EndTime:   0,
+	}
+	tm.machineUsagesMux.Lock()
+	tm.machineUsages[machine.Id] = usage
+	tm.machineUsagesMux.Unlock()
+}
+
+func (tm *TaskManager) endUse(machine *model.Machine) {
+	tm.machineUsagesMux.Lock()
+	usage, exists := tm.machineUsages[machine.Id]
+	if exists {
+		usage.EndTime = time.Now().Unix()
+		model.CreateUsage(usage)
+		// 更新平均使用时间
+		usageDuration := usage.EndTime - usage.StartTime
+		if machine.AvgUseTime == 0 {
+			machine.AvgUseTime = usageDuration
+		} else {
+			machine.AvgUseTime = (machine.AvgUseTime*9 + usageDuration) / 10 // 简单移动平均
+		}
+		delete(tm.machineUsages, machine.Id)
+	} else {
+		log.WithField("machineId", machine.Id).Warn("未找到待结束的使用记录")
+	}
+	tm.machineUsagesMux.Unlock()
 }
 
 // GetMachineTypes 获取指定商店的机器类型（从内存）
