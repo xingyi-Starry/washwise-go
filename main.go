@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -8,24 +9,25 @@ import (
 	"washwise/cron"
 	"washwise/model"
 	"washwise/server"
+	"washwise/util"
 
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	// 设置日志格式
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-	})
-	log.SetLevel(log.InfoLevel)
-
-	// 加载配置文件
-	log.Info("加载配置文件...")
 	if err := config.Load("config/config.yaml"); err != nil {
-		log.WithError(err).Fatal("加载配置文件失败")
+		fmt.Fprintf(os.Stderr, "加载配置文件失败: %v\n", err)
+		os.Exit(1)
 	}
 
 	cfg := config.Get()
+
+	// 使用配置初始化日志系统
+	fmt.Println("正在初始化日志系统...")
+	util.InitLogger(util.LogConfig{
+		Level: cfg.Log.Level,
+		Dir:   cfg.Log.Dir,
+	})
 
 	// 初始化数据库
 	log.Info("初始化数据库...")
@@ -53,14 +55,18 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	log.Info("WashWise 服务已启动，按 Ctrl+C 退出")
+	// 服务启动信息直接打印到标准输出
+	fmt.Printf("  WashWise 服务已启动\n")
+	fmt.Printf("  按 Ctrl+C 退出\n")
 	<-sigChan
 
-	// 优雅关闭
-	log.Info("收到终止信号，正在关闭...")
+	// 服务关闭信息直接打印到标准输出
+	fmt.Println("\n收到终止信号，正在关闭服务...")
+
 	taskManager.Stop()
 	if err := srv.Stop(); err != nil {
-		log.WithError(err).Error("关闭 HTTP 服务器失败")
+		fmt.Fprintf(os.Stderr, "关闭 HTTP 服务器失败: %v\n", err)
 	}
-	log.Info("服务已关闭")
+
+	fmt.Println("服务已完全关闭")
 }

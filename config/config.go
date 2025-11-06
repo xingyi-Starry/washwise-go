@@ -8,6 +8,11 @@ import (
 )
 
 type Config struct {
+	Log struct {
+		Level string `yaml:"level"`
+		Dir   string `yaml:"dir"`
+	} `yaml:"log"`
+
 	Database struct {
 		Path string `yaml:"path"`
 	} `yaml:"database"`
