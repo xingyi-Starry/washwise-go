@@ -28,6 +28,13 @@ func GetMachinesByShopID(shopId string) ([]Machine, error) {
 	return machines, err
 }
 
+// GetMachineByID 根据机器ID获取单个机器
+func GetMachineByID(machineId int64) (*Machine, error) {
+	var machine Machine
+	err := db.Where("id = ?", machineId).First(&machine).Error
+	return &machine, err
+}
+
 // GetAllMachines 获取所有机器
 func GetAllMachines() ([]*Machine, error) {
 	var machines []*Machine
