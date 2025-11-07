@@ -225,50 +225,64 @@ func (tm *TaskManager) fetchMachineDetails() {
 	}
 
 	successCount := 0
+	wg := sync.WaitGroup{}
+	wg.Add(len(machines))
+	sem := make(chan struct{}, 3) // 限制并发数为3
 	for _, machine := range machines {
-		begin := time.Now()
-		detail, err := GetMachineDetail(tm.ctx, machine.Id)
-		if err != nil {
-			duration := float64(time.Since(begin).Milliseconds()) / 1000.0
-			log.WithError(err).WithField("machineId", machine.Id).Warnf("获取机器详情失败，耗时 %.2fs", duration)
-			continue
-		}
-
-		// 当机器状态从可用变为使用中时，更新最后使用时间
-		if machine.Code == model.MachineCodeAvailable && detail.DeviceErrorCode == model.MachineCodeInUse {
-			machine.LastUseTime = time.Now().Unix()
-		} else if machine.Code == model.MachineCodeInUse && detail.DeviceErrorCode != model.MachineCodeInUse {
-			// 当机器状态从使用中变为不可用时，记录使用结束时间，记录入库
-			usage := &model.Usage{
-				MachineId: machine.Id,
-				StartTime: machine.LastUseTime,
-				EndTime:   time.Now().Unix(),
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			begin := time.Now()
+			detail, err := GetMachineDetail(tm.ctx, machine.Id)
+			if err != nil {
+				duration := float64(time.Since(begin).Milliseconds()) / 1000.0
+				log.WithError(err).WithField("machineId", machine.Id).Warnf("获取机器详情失败，耗时 %.2fs", duration)
+				return
 			}
-			model.CreateUsage(usage)
-			// 更新平均使用时间
-			machine.AvgUseTime = calculateAvgUseTime(machine.AvgUseTime, usage.EndTime-usage.StartTime)
-		}
 
-		// 更新机器信息
-		machine.Name = detail.Name
-		machine.ShopId = detail.ShopId
-		machine.Code = detail.DeviceErrorCode
-		machine.Msg = ""
-		if detail.DeviceErrorMsg != nil {
-			machine.Msg = *detail.DeviceErrorMsg
-		}
+			// 当机器状态从可用变为使用中时，更新最后使用时间
+			if machine.Code == model.MachineCodeAvailable && detail.DeviceErrorCode == model.MachineCodeInUse {
+				machine.LastUseTime = time.Now().Unix()
+			} else if machine.Code == model.MachineCodeInUse && detail.DeviceErrorCode != model.MachineCodeInUse {
+				// 当机器状态从使用中变为不可用时，记录使用结束时间，记录入库
+				usage := &model.Usage{
+					MachineId: machine.Id,
+					StartTime: machine.LastUseTime,
+					EndTime:   time.Now().Unix(),
+				}
+				model.CreateUsage(usage)
+				log.WithFields(log.Fields{
+					"mid":      machine.Id,
+					"begin":    time.Unix(usage.StartTime, 0).Format("2006-01-02 15:04:05"),
+					"duration": time.Duration(usage.EndTime-usage.StartTime) * time.Second,
+				}).Info("使用记录落库")
+				// 更新平均使用时间
+				machine.AvgUseTime = calculateAvgUseTime(machine.AvgUseTime, usage.EndTime-usage.StartTime)
+			}
 
-		if err := model.UpdateMachine(machine); err != nil {
+			// 更新机器信息
+			machine.Name = detail.Name
+			machine.ShopId = detail.ShopId
+			machine.Code = detail.DeviceErrorCode
+			machine.Msg = ""
+			if detail.DeviceErrorMsg != nil {
+				machine.Msg = *detail.DeviceErrorMsg
+			}
+
+			if err := model.UpdateMachine(machine); err != nil {
+				duration := float64(time.Since(begin).Milliseconds()) / 1000.0
+				log.WithError(err).WithField("machineId", machine.Id).Warnf("更新机器信息失败，耗时 %.2fs", duration)
+				return
+			}
+
 			duration := float64(time.Since(begin).Milliseconds()) / 1000.0
-			log.WithError(err).WithField("machineId", machine.Id).Warnf("更新机器信息失败，耗时 %.2fs", duration)
-			continue
-		}
+			log.WithField("machineId", machine.Id).Debugf("更新机器信息完成，耗时 %.2fs", duration)
 
-		duration := float64(time.Since(begin).Milliseconds()) / 1000.0
-		log.WithField("machineId", machine.Id).Debugf("更新机器信息完成，耗时 %.2fs", duration)
-
-		successCount++
+			successCount++
+		}()
 	}
+	wg.Wait()
 
 	duration := float64(time.Since(begin).Milliseconds()) / 1000.0
 	log.WithFields(log.Fields{
