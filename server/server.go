@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 	"washwise/config"
+	"washwise/util"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	log "github.com/sirupsen/logrus"
 )
@@ -30,9 +30,7 @@ func New(cfg *config.Config) *Server {
 
 	// 添加中间件
 	app.Use(recover.New())
-	app.Use(logger.New(logger.Config{
-		Format: "[${time}] ${status} - ${latency} ${method} ${path}\n",
-	}))
+	app.Use(util.FiberLogger())
 
 	// 注册路由
 	RegisterServices(app)

@@ -128,6 +128,7 @@ func (tm *TaskManager) runMachineDetailsTask() {
 // fetchMachineTypes 获取所有商店的机器类型
 func (tm *TaskManager) fetchMachineTypes() {
 	cfg := config.Get()
+	begin := time.Now()
 	log.Info("开始获取机器类型...")
 
 	for _, shopId := range cfg.Shops {
@@ -140,17 +141,18 @@ func (tm *TaskManager) fetchMachineTypes() {
 		tm.machineTypesMux.Lock()
 		tm.machineTypes[shopId] = resp
 		tm.machineTypesMux.Unlock()
-
+		duration := float64(time.Since(begin).Milliseconds()) / 1000.0
 		log.WithFields(log.Fields{
 			"shopId": shopId,
 			"count":  len(resp.Items),
-		}).Info("获取机器类型成功")
+		}).Infof("获取机器类型成功，耗时 %.2fs", duration)
 	}
 }
 
 // fetchMachines 获取所有商店、所有类型的机器列表
 func (tm *TaskManager) fetchMachines() {
 	cfg := config.Get()
+	begin := time.Now()
 	log.Info("开始获取机器列表...")
 
 	totalCount := 0
@@ -206,11 +208,13 @@ func (tm *TaskManager) fetchMachines() {
 		}
 	}
 
-	log.WithField("count", totalCount).Info("获取机器列表完成")
+	duration := float64(time.Since(begin).Milliseconds()) / 1000.0
+	log.WithField("count", totalCount).Infof("获取机器列表完成，耗时 %.2fs", duration)
 }
 
 // fetchMachineDetails 获取所有机器的详情
 func (tm *TaskManager) fetchMachineDetails() {
+	begin := time.Now()
 	log.Info("开始获取机器详情...")
 
 	// 从数据库获取所有机器
@@ -222,9 +226,11 @@ func (tm *TaskManager) fetchMachineDetails() {
 
 	successCount := 0
 	for _, machine := range machines {
+		begin := time.Now()
 		detail, err := GetMachineDetail(tm.ctx, machine.Id)
 		if err != nil {
-			log.WithError(err).WithField("machineId", machine.Id).Warn("获取机器详情失败")
+			duration := float64(time.Since(begin).Milliseconds()) / 1000.0
+			log.WithError(err).WithField("machineId", machine.Id).Warnf("获取机器详情失败，耗时 %.2fs", duration)
 			continue
 		}
 
@@ -253,25 +259,30 @@ func (tm *TaskManager) fetchMachineDetails() {
 		}
 
 		if err := model.UpdateMachine(machine); err != nil {
-			log.WithError(err).WithField("machineId", machine.Id).Warn("更新机器信息失败")
+			duration := float64(time.Since(begin).Milliseconds()) / 1000.0
+			log.WithError(err).WithField("machineId", machine.Id).Warnf("更新机器信息失败，耗时 %.2fs", duration)
 			continue
 		}
+
+		duration := float64(time.Since(begin).Milliseconds()) / 1000.0
+		log.WithField("machineId", machine.Id).Debugf("更新机器信息完成，耗时 %.2fs", duration)
 
 		successCount++
 	}
 
+	duration := float64(time.Since(begin).Milliseconds()) / 1000.0
 	log.WithFields(log.Fields{
 		"total":   len(machines),
 		"success": successCount,
 		"fail":    len(machines) - successCount,
-	}).Info("获取机器详情完成")
+	}).Infof("获取机器详情完成，耗时 %.2fs", duration)
 }
 
 func calculateAvgUseTime(lastAvg, newUseTime int64) int64 {
 	if newUseTime < 10*60 { // 10分钟以内，可能是桶自洁，不计入
 		return lastAvg
-	} else if newUseTime > 80*60 { //过久可能异常的时间（如服务中断），截断
-		return 80 * 60
+	} else if newUseTime > 120*60 { //过久可能异常的时间（如服务中断），截断
+		return 120 * 60
 	}
 
 	if lastAvg == 0 { // 第一次计算，直接使用新值

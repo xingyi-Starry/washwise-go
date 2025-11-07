@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -34,14 +35,15 @@ func (t *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		//自定义文件路径
 		fileVal := fmt.Sprintf("%s:%d", entry.Caller.File, entry.Caller.Line)
 		//自定义输出格式
-		fmt.Fprintf(b, "[%s] [%s] %s %s\n", timestamp, entry.Level, fileVal, entry.Message)
+		fmt.Fprintf(b, "[%s] [%s] %s %s", timestamp, entry.Level, fileVal, entry.Message)
 	} else {
-		fmt.Fprintf(b, "[%s] [%s] %s\n", timestamp, entry.Level, entry.Message)
+		fmt.Fprintf(b, "[%s] [%s] %s", timestamp, entry.Level, entry.Message)
 	}
 	// 输出额外字段
 	for k, v := range entry.Data {
 		fmt.Fprintf(b, " -%s[%v]", k, v)
 	}
+	b.WriteByte('\n')
 	return b.Bytes(), nil
 }
 
@@ -141,27 +143,32 @@ func NewLevelFileHook(logDir string) (*LevelFileHook, error) {
 	}
 
 	// 为每个日志级别创建写入器
-	levels := map[logrus.Level]string{
-		// 合并 panic, fatal, error 到 error 级别
-		logrus.PanicLevel: "error",
-		logrus.FatalLevel: "error",
-		logrus.ErrorLevel: "error",
-
-		logrus.WarnLevel: "warn",
-		logrus.InfoLevel: "info",
-
-		// 合并 debug, trace 到 debug 级别
-		logrus.DebugLevel: "debug",
-		logrus.TraceLevel: "debug",
+	errorWriter, err := NewDailyRotateWriter(logDir, "error")
+	if err != nil {
+		return nil, fmt.Errorf("创建 error 级别的日志写入器失败: %w", err)
 	}
+	hook.writers[logrus.PanicLevel] = errorWriter
+	hook.writers[logrus.FatalLevel] = errorWriter
+	hook.writers[logrus.ErrorLevel] = errorWriter
 
-	for level, prefix := range levels {
-		writer, err := NewDailyRotateWriter(logDir, prefix)
-		if err != nil {
-			return nil, fmt.Errorf("创建 %s 级别的日志写入器失败: %w", prefix, err)
-		}
-		hook.writers[level] = writer
+	warnWriter, err := NewDailyRotateWriter(logDir, "warn")
+	if err != nil {
+		return nil, fmt.Errorf("创建 warn 级别的日志写入器失败: %w", err)
 	}
+	hook.writers[logrus.WarnLevel] = warnWriter
+
+	infoWriter, err := NewDailyRotateWriter(logDir, "info")
+	if err != nil {
+		return nil, fmt.Errorf("创建 info 级别的日志写入器失败: %w", err)
+	}
+	hook.writers[logrus.InfoLevel] = infoWriter
+
+	debugWriter, err := NewDailyRotateWriter(logDir, "debug")
+	if err != nil {
+		return nil, fmt.Errorf("创建 debug 级别的日志写入器失败: %w", err)
+	}
+	hook.writers[logrus.DebugLevel] = debugWriter
+	hook.writers[logrus.TraceLevel] = debugWriter
 
 	return hook, nil
 }
@@ -208,6 +215,8 @@ type LogConfig struct {
 // ParseLogLevel 解析日志等级字符串
 func ParseLogLevel(level string) logrus.Level {
 	switch strings.ToLower(level) {
+	case "trace":
+		return logrus.TraceLevel
 	case "debug":
 		return logrus.DebugLevel
 	case "info":
@@ -253,4 +262,19 @@ func InitLogger(config LogConfig) {
 
 	// 屏蔽标准输出
 	logrus.SetOutput(io.Discard)
+}
+
+func FiberLogger() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		start := time.Now()
+		method := c.Method()
+		path := c.Path()
+		status := c.Response().StatusCode()
+
+		err := c.Next()
+		latency := float64(time.Since(start).Nanoseconds()) / 1000000.0
+
+		logrus.WithField("body", string(c.Response().Body())).Tracef("%d %8.2fms %s %s", status, latency, method, path)
+		return err
+	}
 }
