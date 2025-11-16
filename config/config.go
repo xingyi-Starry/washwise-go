@@ -25,9 +25,10 @@ type Config struct {
 	} `yaml:"server"`
 
 	Cron struct {
-		MachineTypesInterval   int `yaml:"machine_types_interval"`
-		MachinesInterval       int `yaml:"machines_interval"`
-		MachineDetailsInterval int `yaml:"machine_details_interval"`
+		Enabled                bool `yaml:"enabled"`
+		MachineTypesInterval   int  `yaml:"machine_types_interval"`
+		MachinesInterval       int  `yaml:"machines_interval"`
+		MachineDetailsInterval int  `yaml:"machine_details_interval"`
 	} `yaml:"cron"`
 }
 

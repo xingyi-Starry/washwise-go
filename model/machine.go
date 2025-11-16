@@ -19,7 +19,7 @@ type Machine struct {
 	AvgUseTime  int64  // 平均使用时间，单位秒
 	ShopId      string `gorm:"index"`
 	Type        string
-	UsageCount  int `gorm:"-"`
+	UsageCount  int `gorm:"->;column:usage_count;-:migration"`
 }
 
 // GetMachinesByShopID 根据商店ID获取所有机器

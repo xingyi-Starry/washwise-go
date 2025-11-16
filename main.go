@@ -38,7 +38,9 @@ func main() {
 
 	// 初始化并启动定时任务
 	taskManager := cron.InitTaskManager()
-	taskManager.Start()
+	if cfg.Cron.Enabled {
+		taskManager.Start()
+	}
 
 	// 初始化并启动HTTP服务器
 	log.Info("初始化 HTTP 服务器...")

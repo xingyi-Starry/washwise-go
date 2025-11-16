@@ -22,6 +22,7 @@ server:
 
 # 定时任务周期配置（单位：秒）
 cron:
+  enabled: false
   # 获取机器类型的周期（大周期）
   machine_types_interval: 3600 # 1小时
 

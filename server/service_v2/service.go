@@ -56,7 +56,10 @@ func GetMachines(c *fiber.Ctx) error {
 		return util.BadRequest(c, err.Error())
 	}
 
-	machines, err := model.GetMachinesWithUsageCount(req.ShopId, time.Now().AddDate(0, 0, -7).Unix(), time.Now().Unix())
+	date := time.Now()
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location()).AddDate(0, 0, -6)
+	endOfDay := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
+	machines, err := model.GetMachinesWithUsageCount(req.ShopId, startOfDay.Unix(), endOfDay.Unix())
 	if err != nil {
 		logrus.WithError(err).Error("db error")
 		return util.Internal(c)
