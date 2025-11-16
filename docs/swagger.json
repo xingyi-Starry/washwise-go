@@ -1,0 +1,281 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/api/v1/getLaundryMachines": {
+            "get": {
+                "description": "获取洗衣机列表",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "v1"
+                ],
+                "summary": "获取洗衣机列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "店铺ID",
+                        "name": "LaundryID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/servicev1.GetLaundryMachinesResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/getMachineDetail": {
+            "get": {
+                "description": "获取洗衣机详情",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "v1"
+                ],
+                "summary": "获取洗衣机详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "洗衣机ID",
+                        "name": "MachineID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/servicev1.GetMachineDetailResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/machine/{machineId}": {
+            "get": {
+                "description": "获取洗衣机详情",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "summary": "获取洗衣机详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "洗衣机ID",
+                        "name": "machineId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/servicev2.MachineDetailResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/machines": {
+            "get": {
+                "description": "获取洗衣机列表",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "summary": "获取洗衣机列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "店铺ID",
+                        "name": "shopId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/servicev2.GetMachinesResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/shops": {
+            "get": {
+                "description": "获取店铺列表",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "summary": "获取店铺列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/servicev2.GetShopsResp"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "servicev1.GetLaundryMachinesResp": {
+            "type": "object",
+            "properties": {
+                "洗衣机": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/servicev1.MachineInfo"
+                    }
+                }
+            }
+        },
+        "servicev1.GetMachineDetailResp": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "integer"
+            }
+        },
+        "servicev1.MachineInfo": {
+            "type": "object",
+            "properties": {
+                "deviceCode": {
+                    "type": "integer"
+                },
+                "deviceMsg": {
+                    "type": "string"
+                },
+                "errorCount": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "remainTime": {
+                    "description": "剩余时间，单位：分钟",
+                    "type": "integer"
+                }
+            }
+        },
+        "servicev2.GetMachinesResp": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/servicev2.GetMachinesRespItem"
+                    }
+                }
+            }
+        },
+        "servicev2.GetMachinesRespItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "remainTime": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "usageCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "servicev2.GetShopsResp": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/servicev2.GetShopsRespItem"
+                    }
+                }
+            }
+        },
+        "servicev2.GetShopsRespItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "servicev2.MachineDetailResp": {
+            "type": "object",
+            "properties": {
+                "avgUseTime": {
+                    "description": "平均使用时间，即预计使用时间，单位秒",
+                    "type": "integer"
+                },
+                "history": {
+                    "description": "date -\u003e usage count",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastUseTime": {
+                    "description": "上个人开始使用时间",
+                    "type": "integer"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "remainTime": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

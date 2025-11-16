@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -40,20 +41,38 @@ func (t *LogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		fmt.Fprintf(b, "[%s] [%s] %s", timestamp, entry.Level, entry.Message)
 	}
 	// 输出额外字段
-	for k, v := range entry.Data {
-		fmt.Fprintf(b, " -%s[%v]", k, v)
+	if len(entry.Data) > 0 {
+		t.formatEntries(b, entry.Data)
 	}
 	b.WriteByte('\n')
 	return b.Bytes(), nil
 }
 
+type entry struct {
+	k string
+	v any
+}
+
+// formatEntries 格式化并排序日志字段，保证稳定输出顺序
+func (t *LogFormatter) formatEntries(w io.Writer, data logrus.Fields) {
+	es := make([]entry, 0, len(data))
+	for k, v := range data {
+		es = append(es, entry{k: k, v: v})
+	}
+	sort.Slice(es, func(i, j int) bool { return strings.Compare(es[i].k, es[j].k) < 0 })
+	for _, e := range es {
+		fmt.Fprintf(w, " -%s[%v]", e.k, e.v)
+	}
+}
+
 // DailyRotateWriter 按日期自动轮换的文件写入器
 type DailyRotateWriter struct {
-	logDir      string
-	levelPrefix string
-	currentDate string
-	file        *os.File
-	mu          sync.Mutex
+	logDir          string
+	levelPrefix     string
+	currentDate     string
+	currentFilePath string
+	file            *os.File
+	mu              sync.Mutex
 }
 
 // NewDailyRotateWriter 创建一个新的按日期轮换的写入器
@@ -79,22 +98,40 @@ func (w *DailyRotateWriter) Write(p []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	// 检查是否需要轮换日志文件
-	currentDate := time.Now().Format("20060102_15")
-	if currentDate != w.currentDate {
-		if err := w.rotate(); err != nil {
-			return 0, err
-		}
+	// 检查日志文件
+	if err := w.checkFile(); err != nil {
+		return 0, err
 	}
 
 	return w.file.Write(p)
+}
+
+func (w *DailyRotateWriter) checkFile() error {
+	currentDate := time.Now().Format("20060102_15")
+
+	// 检查日期是否变化
+	if currentDate != w.currentDate {
+		return w.rotate()
+	}
+
+	// 检查当前文件是否还存在
+	opened, err := w.file.Stat()
+	if err != nil {
+		return err
+	}
+	stat, err := os.Stat(w.currentFilePath)
+	if err != nil || !os.SameFile(stat, opened) {
+		return w.rotate()
+	}
+
+	return nil
 }
 
 // rotate 轮换日志文件
 func (w *DailyRotateWriter) rotate() error {
 	currentDate := time.Now().Format("20060102_15")
 	filename := fmt.Sprintf("%s_%s.log", w.levelPrefix, currentDate)
-	filepath := filepath.Join(w.logDir, filename)
+	filePath := filepath.Join(w.logDir, filename)
 
 	// 关闭旧文件
 	if w.file != nil {
@@ -104,13 +141,14 @@ func (w *DailyRotateWriter) rotate() error {
 	}
 
 	// 打开新文件
-	file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return fmt.Errorf("打开日志文件失败: %w", err)
 	}
 
 	w.file = file
 	w.currentDate = currentDate
+	w.currentFilePath = filePath
 	return nil
 }
 
@@ -168,7 +206,12 @@ func NewLevelFileHook(logDir string) (*LevelFileHook, error) {
 		return nil, fmt.Errorf("创建 debug 级别的日志写入器失败: %w", err)
 	}
 	hook.writers[logrus.DebugLevel] = debugWriter
-	hook.writers[logrus.TraceLevel] = debugWriter
+
+	traceWriter, err := NewDailyRotateWriter(logDir, "trace")
+	if err != nil {
+		return nil, fmt.Errorf("创建 trace 级别的日志写入器失败: %w", err)
+	}
+	hook.writers[logrus.TraceLevel] = traceWriter
 
 	return hook, nil
 }

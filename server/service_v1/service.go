@@ -10,7 +10,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// api/v1/getLaundryMachines?LaundryID=1
+// @Summary 获取洗衣机列表
+// @Description 获取洗衣机列表
+// @Tags v1
+// @Param LaundryID query string true "店铺ID"
+// @Produce json
+// @Success 200 {object} GetLaundryMachinesResp
+// @Router /api/v1/getLaundryMachines [get]
 func GetLaundryMachines(c *fiber.Ctx) error {
 	shopId := c.Query("LaundryID")
 	if shopId == "" {
@@ -47,7 +53,13 @@ func GetLaundryMachines(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /api/v1/getMachineDetail?MachineID=1
+// @Summary 获取洗衣机详情
+// @Description 获取洗衣机详情
+// @Tags v1
+// @Param MachineID query string true "洗衣机ID"
+// @Produce json
+// @Success 200 {object} GetMachineDetailResp
+// @Router /api/v1/getMachineDetail [get]
 func GetMachineDetail(c *fiber.Ctx) error {
 	machineIdStr := c.Query("MachineID")
 	machineId, err := strconv.ParseInt(machineIdStr, 10, 64)

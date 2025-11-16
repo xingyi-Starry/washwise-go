@@ -19,12 +19,19 @@ type Machine struct {
 	AvgUseTime  int64  // 平均使用时间，单位秒
 	ShopId      string `gorm:"index"`
 	Type        string
+	UsageCount  int `gorm:"-"`
 }
 
 // GetMachinesByShopID 根据商店ID获取所有机器
 func GetMachinesByShopID(shopId string) ([]Machine, error) {
 	var machines []Machine
 	err := db.Where("shop_id = ?", shopId).Find(&machines).Error
+	return machines, err
+}
+
+func GetMachinesWithUsageCount(shopId string, startTime, endTime int64) ([]Machine, error) {
+	var machines []Machine
+	err := db.Model(&Machine{}).Select("machines.*, COUNT(usages.id) as usage_count").Joins("LEFT JOIN usages ON machines.id = usages.machine_id AND usages.start_time >= ? AND usages.start_time <= ?", startTime, endTime).Where("machines.shop_id = ?", shopId).Group("machines.id").Find(&machines).Error
 	return machines, err
 }
 

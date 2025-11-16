@@ -29,6 +29,7 @@ type GetMachinesRespItem struct {
 	Type       string `json:"type"`
 	Msg        string `json:"msg"`
 	Status     int    `json:"status"`
+	UsageCount int    `json:"usageCount"`
 	RemainTime int64  `json:"remainTime"`
 }
 

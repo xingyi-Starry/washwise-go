@@ -2,7 +2,7 @@
 
 # 日志配置
 log:
-  level: "info"  # 日志等级: debug, info, warn, error, fatal, panic
+  level: "trace"  # 日志等级: debug, info, warn, error, fatal, panic
   dir: "logs"    # 日志目录
 
 # 数据库配置

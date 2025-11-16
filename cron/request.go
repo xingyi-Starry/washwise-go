@@ -61,10 +61,12 @@ func doPost[G any](ctx context.Context, url string, bodyData any) (*G, error) {
 	return respBody.Data, nil
 }
 
+// curl -X POST 'https://userapi.qiekj.com/machineModel/nearByList' -d 'shopId=202302071714530000012067133598'
 func GetMachineTypes(ctx context.Context, shopId string) (*GetMachineTypesResp, error) {
 	return doPost[GetMachineTypesResp](ctx, "https://userapi.qiekj.com/machineModel/nearByList", GetMachineTypesReq{shopId})
 }
 
+// curl -X POST 'https://userapi.qiekj.com/machineModel/near/machines' -d 'shopId=202302071714530000012067133598&machineTypeId=c9892cb4-bd78-40f6-83c2-ba73383b090a&pageSize=1000&page=1'
 func GetMachines(ctx context.Context, shopId string, machineTypeId string, pageSize, page int) (*GetMachinesResp, error) {
 	return doPost[GetMachinesResp](ctx, "https://userapi.qiekj.com/machineModel/near/machines", GetMachinesReq{
 		ShopId:        shopId,
@@ -74,6 +76,7 @@ func GetMachines(ctx context.Context, shopId string, machineTypeId string, pageS
 	})
 }
 
+// curl -X POST 'https://userapi.qiekj.com/goods/normal/details' -d 'goodsId=1100545774'
 func GetMachineDetail(ctx context.Context, goodsId int64) (*GetMachineDetailResp, error) {
 	return doPost[GetMachineDetailResp](ctx, "https://userapi.qiekj.com/goods/normal/details", GetMachineDetailReq{
 		GoodsId: goodsId,

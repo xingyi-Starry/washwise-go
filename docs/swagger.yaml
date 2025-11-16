@@ -1,0 +1,183 @@
+definitions:
+  servicev1.GetLaundryMachinesResp:
+    properties:
+      洗衣机:
+        additionalProperties:
+          $ref: '#/definitions/servicev1.MachineInfo'
+        type: object
+    type: object
+  servicev1.GetMachineDetailResp:
+    additionalProperties:
+      type: integer
+    type: object
+  servicev1.MachineInfo:
+    properties:
+      deviceCode:
+        type: integer
+      deviceMsg:
+        type: string
+      errorCount:
+        type: integer
+      name:
+        type: string
+      remainTime:
+        description: 剩余时间，单位：分钟
+        type: integer
+    type: object
+  servicev2.GetMachinesResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/servicev2.GetMachinesRespItem'
+        type: array
+    type: object
+  servicev2.GetMachinesRespItem:
+    properties:
+      id:
+        type: integer
+      msg:
+        type: string
+      name:
+        type: string
+      remainTime:
+        type: integer
+      status:
+        type: integer
+      type:
+        type: string
+      usageCount:
+        type: integer
+    type: object
+  servicev2.GetShopsResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/servicev2.GetShopsRespItem'
+        type: array
+    type: object
+  servicev2.GetShopsRespItem:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  servicev2.MachineDetailResp:
+    properties:
+      avgUseTime:
+        description: 平均使用时间，即预计使用时间，单位秒
+        type: integer
+      history:
+        additionalProperties:
+          type: integer
+        description: date -> usage count
+        type: object
+      id:
+        type: integer
+      lastUseTime:
+        description: 上个人开始使用时间
+        type: integer
+      msg:
+        type: string
+      name:
+        type: string
+      remainTime:
+        type: integer
+      status:
+        type: integer
+      type:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/getLaundryMachines:
+    get:
+      description: 获取洗衣机列表
+      parameters:
+      - description: 店铺ID
+        in: query
+        name: LaundryID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/servicev1.GetLaundryMachinesResp'
+      summary: 获取洗衣机列表
+      tags:
+      - v1
+  /api/v1/getMachineDetail:
+    get:
+      description: 获取洗衣机详情
+      parameters:
+      - description: 洗衣机ID
+        in: query
+        name: MachineID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/servicev1.GetMachineDetailResp'
+      summary: 获取洗衣机详情
+      tags:
+      - v1
+  /api/v2/machine/{machineId}:
+    get:
+      description: 获取洗衣机详情
+      parameters:
+      - description: 洗衣机ID
+        in: path
+        name: machineId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/servicev2.MachineDetailResp'
+      summary: 获取洗衣机详情
+      tags:
+      - v2
+  /api/v2/machines:
+    get:
+      description: 获取洗衣机列表
+      parameters:
+      - description: 店铺ID
+        in: query
+        name: shopId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/servicev2.GetMachinesResp'
+      summary: 获取洗衣机列表
+      tags:
+      - v2
+  /api/v2/shops:
+    get:
+      description: 获取店铺列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/servicev2.GetShopsResp'
+      summary: 获取店铺列表
+      tags:
+      - v2
+swagger: "2.0"

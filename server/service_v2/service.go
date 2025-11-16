@@ -26,7 +26,12 @@ func getShopName(shopId string) string {
 	return name
 }
 
-// GET /api/v2/shops 获取店铺列表
+// @Summary 获取店铺列表
+// @Description 获取店铺列表
+// @Tags v2
+// @Produce json
+// @Success 200 {object} GetShopsResp
+// @Router /api/v2/shops [get]
 func GetShops(c *fiber.Ctx) error {
 	resp := &GetShopsResp{}
 	for _, shopId := range config.Get().Shops {
@@ -38,14 +43,20 @@ func GetShops(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// GET /api/v2/machines?shopId=123 获取洗衣机列表
+// @Summary 获取洗衣机列表
+// @Description 获取洗衣机列表
+// @Tags v2
+// @Param shopId query string true "店铺ID"
+// @Produce json
+// @Success 200 {object} GetMachinesResp
+// @Router /api/v2/machines [get]
 func GetMachines(c *fiber.Ctx) error {
 	req := &GetMachinesReq{}
 	if err := c.QueryParser(req); err != nil {
 		return util.BadRequest(c, err.Error())
 	}
 
-	machines, err := model.GetMachinesByShopID(req.ShopId)
+	machines, err := model.GetMachinesWithUsageCount(req.ShopId, time.Now().AddDate(0, 0, -7).Unix(), time.Now().Unix())
 	if err != nil {
 		logrus.WithError(err).Error("db error")
 		return util.Internal(c)
@@ -70,13 +81,20 @@ func GetMachines(c *fiber.Ctx) error {
 			Type:       machine.Type,
 			Msg:        machine.Msg,
 			Status:     machine.Code,
+			UsageCount: machine.UsageCount,
 			RemainTime: remainTime,
 		})
 	}
 	return c.JSON(resp)
 }
 
-// GET /api/v2/machine/:machineId 获取洗衣机详情
+// @Summary 获取洗衣机详情
+// @Description 获取洗衣机详情
+// @Tags v2
+// @Param machineId path string true "洗衣机ID"
+// @Produce json
+// @Success 200 {object} MachineDetailResp
+// @Router /api/v2/machine/{machineId} [get]
 func GetMachine(c *fiber.Ctx) error {
 	machineIdStr := c.Params("machineId")
 	machineId, err := strconv.ParseInt(machineIdStr, 10, 64)
