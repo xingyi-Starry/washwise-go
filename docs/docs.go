@@ -102,6 +102,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v2/machine/{machineId}/dislike": {
+            "get": {
+                "description": "点踩洗衣机",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "summary": "点踩洗衣机",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "洗衣机ID",
+                        "name": "machineId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v2/machine/{machineId}/like": {
+            "get": {
+                "description": "点赞洗衣机",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "v2"
+                ],
+                "summary": "点赞洗衣机",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "洗衣机ID",
+                        "name": "machineId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/api/v2/machines": {
             "get": {
                 "description": "获取洗衣机列表",
@@ -208,6 +260,9 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "like": {
+                    "type": "integer"
+                },
                 "msg": {
                     "type": "string"
                 },
@@ -269,6 +324,9 @@ const docTemplate = `{
                 },
                 "lastUseTime": {
                     "description": "上个人开始使用时间",
+                    "type": "integer"
+                },
+                "like": {
                     "type": "integer"
                 },
                 "msg": {

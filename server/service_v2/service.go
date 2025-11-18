@@ -86,6 +86,7 @@ func GetMachines(c *fiber.Ctx) error {
 			Status:     machine.Code,
 			UsageCount: machine.UsageCount,
 			RemainTime: remainTime,
+			Like:       machine.Like,
 		})
 	}
 	return c.JSON(resp)
@@ -156,10 +157,55 @@ func GetMachine(c *fiber.Ctx) error {
 		Msg:         machine.Msg,
 		Status:      machine.Code,
 		RemainTime:  remainTime,
+		Like:        machine.Like,
 		AvgUseTime:  machine.AvgUseTime,
 		LastUseTime: machine.LastUseTime,
 		History:     history,
 	}
 
 	return c.JSON(resp)
+}
+
+// @Summary 点赞洗衣机
+// @Description 点赞洗衣机
+// @Tags v2
+// @Param machineId path string true "洗衣机ID"
+// @Produce json
+// @Success 200
+// @Router /api/v2/machine/{machineId}/like [get]
+func Like(c *fiber.Ctx) error {
+	machineIdStr := c.Params("machineId")
+	machineId, err := strconv.ParseInt(machineIdStr, 10, 64)
+	if err != nil {
+		return util.BadRequest(c, "machineId is required")
+	}
+
+	err = model.UpdateMachineLike(machineId, 1)
+	if err != nil {
+		logrus.WithError(err).Error("db error")
+		return util.Internal(c)
+	}
+	return util.Success(c)
+}
+
+// @Summary 点踩洗衣机
+// @Description 点踩洗衣机
+// @Tags v2
+// @Param machineId path string true "洗衣机ID"
+// @Produce json
+// @Success 200
+// @Router /api/v2/machine/{machineId}/dislike [get]
+func DisLike(c *fiber.Ctx) error {
+	machineIdStr := c.Params("machineId")
+	machineId, err := strconv.ParseInt(machineIdStr, 10, 64)
+	if err != nil {
+		return util.BadRequest(c, "machineId is required")
+	}
+
+	err = model.UpdateMachineLike(machineId, -1)
+	if err != nil {
+		logrus.WithError(err).Error("db error")
+		return util.Internal(c)
+	}
+	return util.Success(c)
 }

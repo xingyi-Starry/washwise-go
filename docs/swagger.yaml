@@ -35,6 +35,8 @@ definitions:
     properties:
       id:
         type: integer
+      like:
+        type: integer
       msg:
         type: string
       name:
@@ -76,6 +78,8 @@ definitions:
         type: integer
       lastUseTime:
         description: 上个人开始使用时间
+        type: integer
+      like:
         type: integer
       msg:
         type: string
@@ -146,6 +150,40 @@ paths:
           schema:
             $ref: '#/definitions/servicev2.MachineDetailResp'
       summary: 获取洗衣机详情
+      tags:
+      - v2
+  /api/v2/machine/{machineId}/dislike:
+    get:
+      description: 点踩洗衣机
+      parameters:
+      - description: 洗衣机ID
+        in: path
+        name: machineId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: 点踩洗衣机
+      tags:
+      - v2
+  /api/v2/machine/{machineId}/like:
+    get:
+      description: 点赞洗衣机
+      parameters:
+      - description: 洗衣机ID
+        in: path
+        name: machineId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: 点赞洗衣机
       tags:
       - v2
   /api/v2/machines:

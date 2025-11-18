@@ -31,6 +31,7 @@ type GetMachinesRespItem struct {
 	Status     int    `json:"status"`
 	UsageCount int    `json:"usageCount"`
 	RemainTime int64  `json:"remainTime"`
+	Like       int64  `json:"like"`
 }
 
 type MachineDetailResp struct {
@@ -40,6 +41,7 @@ type MachineDetailResp struct {
 	Msg        string `json:"msg"`
 	Status     int    `json:"status"`
 	RemainTime int64  `json:"remainTime"`
+	Like       int64  `json:"like"`
 
 	AvgUseTime  int64          `json:"avgUseTime"`  // 平均使用时间，即预计使用时间，单位秒
 	LastUseTime int64          `json:"lastUseTime"` // 上个人开始使用时间

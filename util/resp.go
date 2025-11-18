@@ -21,3 +21,10 @@ func Unauthorized(c *fiber.Ctx, msg string) error {
 		"code": 401,
 	})
 }
+
+func Success(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"code": 0,
+		"msg":  "success",
+	})
+}

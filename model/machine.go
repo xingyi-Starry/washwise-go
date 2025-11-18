@@ -1,6 +1,7 @@
 package model
 
 import (
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -19,7 +20,8 @@ type Machine struct {
 	AvgUseTime  int64  // 平均使用时间，单位秒
 	ShopId      string `gorm:"index"`
 	Type        string
-	UsageCount  int `gorm:"->;column:usage_count;-:migration"`
+	Like        int64
+	UsageCount  int `gorm:"->;-:migration"` // 非持久化字段
 }
 
 // GetMachinesByShopID 根据商店ID获取所有机器
@@ -63,4 +65,8 @@ func InsertMachinesIfNotExists(machines []Machine) error {
 		Columns:   []clause.Column{{Name: "id"}},
 		DoNothing: true,
 	}).Create(&machines).Error
+}
+
+func UpdateMachineLike(machineId int64, value int64) error {
+	return db.Model(&Machine{}).Where("id = ?", machineId).Update("like", gorm.Expr("like + ?", value)).Error
 }
